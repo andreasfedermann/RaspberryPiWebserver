@@ -1,0 +1,96 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+# Build an docker image https://docs.microsoft.com/en-us/azure/devops/pipelines/ecosystems/containers/build-image?view=azure-devops
+# Publish a docker image https://docs.microsoft.com/en-us/azure/devops/pipelines/ecosystems/containers/push-image?view=azure-devops
+
+trigger:
+- master
+
+jobs:
+- job: BuildAndTest
+  displayName: Build and Test
+
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  steps:
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: restore
+      projects: '**/*.csproj'
+      feedsToUse: config
+      nugetConfigPath: NuGet.config
+
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
+      command: build
+      projects: '**/*.csproj'
+      arguments: '--configuration Release'
+
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: test
+      projects: '**/*Tests/*.csproj'
+      arguments: '--configuration $(buildConfiguration)'
+
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: publish
+      publishWebProjects: True
+      arguments: '--output $(Build.ArtifactStagingDirectory)'
+      zipAfterPublish: false
+
+  - task: PublishBuildArtifacts@1
+    displayName: Store artifact
+    inputs:
+      artifactName: 'RaspberryPiWebserver'
+
+- job: Package
+  displayName: Build and push docker image
+  dependsOn: BuildAndTest
+  condition: succeeded()
+
+  pool:
+    vmImage: 'ubuntu-latest'
+  
+  steps:
+    - checkout: none
+
+    - task: DownloadBuildArtifacts@0
+      displayName: Download build artifacts
+      inputs:
+        artifactName: 'RaspberryPiWebserver'
+
+    - task: Docker@2
+      displayName: Docker login
+      inputs:
+        containerRegistry: 'Private Docker Registry'
+        command: 'login'
+    
+    - task: Docker@2
+      displayName: Docker build
+      inputs:
+        arguments: '--build-arg baseAppFolder=$(System.ArtifactsDirectory)'
+        containerRegistry: 'Private Docker Registry'
+        repository: 'andreasfedermann/RaspberryPiWebserver'
+        command: 'build'
+        Dockerfile: '$(System.ArtifactsDirectory)/RaspberryPiWebserver/RaspberryPiWebserver/Dockerfile.azuredevops'
+        tags: '$(Build.BuildNumber)'
+
+    - task: Docker@2
+      displayName: Docker push
+      inputs:
+        containerRegistry: 'Private Docker Registry'
+        repository: 'andreasfedermann/RaspberryPiWebserver'
+        command: 'push'
+        tags: '$(Build.BuildNumber)'
+
+    - task: Docker@2
+      displayName: Docker logout
+      inputs:
+        containerRegistry: 'Private Docker Registry'
+        command: 'logout'
