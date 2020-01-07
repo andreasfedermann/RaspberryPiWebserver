@@ -22,7 +22,7 @@ jobs:
     steps:    
     - uses: actions/checkout@v1
     - name: Build the docker image
-      run: docker build . --tag raspberrypiwebserver:$(date +%s)
+      run: docker build RaspberryPiWebserver/. --tag raspberrypiwebserver:$(date +%s)
       
       
       
