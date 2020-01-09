@@ -5,7 +5,7 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/core/sdk:3.0-buster AS build
 WORKDIR /src
-COPY ["RaspberryPiWebserver/RaspberryPiWebserver.csproj", "RaspberryPiWebserver/"]
+COPY ["RaspberryPiWebserver/RaspberryPiWebserver/RaspberryPiWebserver.csproj", "RaspberryPiWebserver/"]
 RUN dotnet restore "RaspberryPiWebserver/RaspberryPiWebserver.csproj"
 COPY . .
 WORKDIR "/src/RaspberryPiWebserver"
